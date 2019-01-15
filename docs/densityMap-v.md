@@ -496,7 +496,7 @@ tm_shape(crime_densities$polygons) +
   tm_style("gray") +
   tm_credits("Map by Christopher Prener, Ph.D. \nData via SLMPD for 2016-2017", position = c("left", "BOTTOM")) +
   tm_layout(
-    main.title = "Violent 1 Crimes in St. Louis",
+    main.title = "Violent Crimes in St. Louis",
         main.title.position = "left",
         attr.outside = TRUE, 
         legend.outside = TRUE,

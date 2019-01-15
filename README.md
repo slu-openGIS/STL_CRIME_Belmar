@@ -7,7 +7,7 @@
 [![](https://img.shields.io/github/repo-size/chris-prener/STL_CRIME_Belmar.svg)](https://github.com/chris-prener/STL_CRIME_Belmar/)
 
 ### Abstract
-This repository contains... . See my [dataviz gallery](https://chris-prener.github.io/dataviz/project/stl-pop-change/) for additional details.
+This repository contains maps and plots that detail a map included in St. Louis County Police Chief Belmar's [proposal for a merged city-county police department](https://bloximages.newyork1.vip.townnews.com/stltoday.com/content/tncms/assets/v3/editorial/8/42/8423788c-c647-54dc-89c9-db985e6e77ce/5c3028f56c8fe.pdf.pdf). See my [dataviz gallery](https://chris-prener.github.io/dataviz/project/stl-pop-change/) for additional details.
 
 ### Citing These Images
 This repository is associated with a [Digital Object Identifier](https://en.wikipedia.org/wiki/Digital_object_identifier) (or DOI). Please include the DOI when citing these images. You can find pre-formatted citations and a BibTeX entry, among other citation resources, on the associated [Zenodo release page](#).
