@@ -34,29 +34,6 @@ library(dplyr)         # data wrangling
 ``` r
 library(readr)         # working with csv data
 
-# spatial packages
-library(areal)         # interpolation
-library(sf)            # working with spatial data
-```
-
-    ## Linking to GEOS 3.6.1, GDAL 2.1.3, PROJ 4.9.3
-
-``` r
-library(tidycensus)    # census api access
-library(tigris)        # tiger/line api access
-```
-
-    ## To enable 
-    ## caching of data, set `options(tigris_use_cache = TRUE)` in your R script or .Rprofile.
-
-    ## 
-    ## Attaching package: 'tigris'
-
-    ## The following object is masked from 'package:graphics':
-    ## 
-    ##     plot
-
-``` r
 # other packages
 library(janitor)       # frequency tables
 library(here)          # file path management
@@ -367,7 +344,7 @@ crimes2017 %>%
   cs_filter_crime(var = Crime, crime = "Part 1") %>%
   cs_crime_cat(var = Crime, newVar = crimeCat, output = "string") %>%
   cs_missing_xy(varx = XCoord, vary = YCoord, newVar = xyStatus) %>%
-  select(Complaint, DateOccur, Crime, crimeCat, District, Description, 
+  select(Complaint, DateOccur, Crime, crimeCat, Description, 
          ILEADSAddress, ILEADSStreet, XCoord, YCoord, xyStatus) -> p1_2017
 ```
 
@@ -428,5 +405,15 @@ p1_crimes <- bind_rows(p1_2016, p1_2017)
 Finally, we’ll creat a spreadsheet of our data for later reference:
 
 ``` r
-write.csv(p1_crimes, here("data", "clean", "p1_crimes.csv"))
+write_csv(p1_crimes, here("data", "clean", "p1_crimes.csv"))
+```
+
+## Isolate Violent Crimes
+
+We’ll also pull out violent cimes, and write them to a spreadsheet as
+well:
+
+``` r
+v_crimes <- cs_filter_crime(p1_crimes, var = Crime, crime = "Violent")
+write_csv(v_crimes, here("data", "clean", "v_crimes.csv"))
 ```

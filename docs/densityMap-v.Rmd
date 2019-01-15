@@ -1,0 +1,97 @@
+---
+title: "Density Map - Violent Crimes"
+author: "Christopher Prener, Ph.D."
+date: '(`r format(Sys.time(), "%B %d, %Y")`)'
+output: 
+  github_document: default
+  html_notebook: default 
+---
+
+## Introduction
+This notebook contains the code for creating density maps of violent crimes in St. Louis.
+
+## Dependencies
+This notebook requires:
+
+```{r load-packages}
+# tidyverse packages
+library(dplyr)         # data wrangling
+library(readr)         # working with csv data
+
+# spatial packages
+library(sf)            # working with spatial data
+library(tigris)        # tiger/line api access        
+library(tmap)          # mapping
+library(tmaptools)     # mapping
+
+# other packages
+library(here)          # file path management
+```
+
+## Load Data
+We'll load both the crime data and the neighborhood boundaries for mapping:
+
+```{r load-data}
+read_csv(here("data", "clean", "v_crimes.csv")) %>%
+  st_as_sf(coords = c("XCoord", "YCoord"), crs = 102696) -> crimes
+
+st_read(here("data", "clean", "STL_CRIME_Neighborhoods", "STL_CRIME_Neighborhoods.shp")) %>%
+  st_transform(crs = 102696) -> nhoods
+```
+
+## Download Data
+Next, we need to get St. Louis's boundary for both mapping and some final data cleaning:
+
+```{r download-county}
+counties(state = 29, class = "sf") %>%
+  select(COUNTYFP) %>%
+  filter(COUNTYFP == 510) %>%
+  st_transform(crs = 102696) -> stLouis
+```
+
+## Removing Crimes Outside of St. Louis
+We don't want to map crimes that happen in the county or elsewhere, so we'll complete a spatial join and remove crimes that do not fall within the city:
+
+```{r clip}
+st_intersection(crimes, stLouis) %>%
+  select(-xyStatus, -COUNTYFP) -> crimes_stl
+```
+
+## Density Map
+To create a density map, we need to specify breaks for our values:
+
+```{r calculate-breaks}
+crime_densities <- smooth_map(crimes_stl, bandwidth = 0.5, 
+  breaks = c(0, 5, 15, 30, 45, 65), cover = stLouis)
+```
+
+We can then create our map:
+
+```{r create-map}
+tm_shape(crime_densities$polygons) +
+  tm_fill(col = "level", palette = "RdPu", 
+    title = expression("Crimes per " * km^2)) + 
+  tm_shape(stLouis) + 
+  tm_borders() +
+  tm_shape(nhoods) + 
+  tm_borders(col = "grey25", alpha = .5) +
+  tm_style("gray") +
+  tm_credits("Map by Christopher Prener, Ph.D. \nData via SLMPD for 2016-2017", position = c("left", "BOTTOM")) +
+  tm_layout(
+    main.title = "Violent 1 Crimes in St. Louis",
+		main.title.position = "left",
+		attr.outside = TRUE, 
+		legend.outside = TRUE,
+		inner.margins = c(.05, .05, .05, .05)
+		) -> densityMap
+
+densityMap
+```
+
+## Write Map
+We'll save the map for publication:
+
+```{r write-map}
+tmap_save(densityMap, filename = here("results", "density_map_v.png"), 
+          dpi = 500)
+```

@@ -1,0 +1,62 @@
+---
+title: "Choropleth Map - Part 1 Crimes"
+author: "Christopher Prener, Ph.D."
+date: '(`r format(Sys.time(), "%B %d, %Y")`)'
+output: 
+  github_document: default
+  html_notebook: default 
+---
+
+## Introduction
+This notebook contains the code for creating a normalized choropleth map in St. Louis.
+
+## Dependencies
+This notebook requires:
+
+```{r load-packages}
+# spatial packages
+library(sf)            # working with spatial data
+library(tigris)        # tiger/line api access        
+library(tmap)          # mapping
+library(tmaptools)     # mapping
+
+# other packages
+library(here)          # file path management
+```
+
+## Load Data
+We'll load the neighborhood boundaries for plotting:
+
+```{r}
+st_read(here("data", "clean", "STL_CRIME_Neighborhoods", "STL_CRIME_Neighborhoods.shp")) %>%
+  st_transform(crs = 102696) -> nhoods
+```
+
+## Create Map
+Next, we'll create our map:
+
+```{r}
+tm_shape(nhoods) +
+  tm_polygons(col = "vRate",
+              palette = "RdPu",
+              title = expression("Crimes per 1,000 Residents")) +
+  tm_credits("Map by Christopher Prener, Ph.D. \nData via SLMPD for 2016-2017", position = c("left", "BOTTOM")) +
+  tm_style("gray") +
+  tm_layout(
+    main.title = "Violent Crimes in St. Louis",
+		main.title.position = "left",
+		attr.outside = TRUE, 
+		legend.outside = TRUE,
+		inner.margins = c(.05, .05, .05, .05)
+		)  -> rateMap
+
+rateMap
+```
+
+## Write Map
+We'll save the map for publication:
+
+```{r write-map}
+tmap_save(rateMap, filename = here("results", "rate_map_v.png"), 
+          dpi = 500)
+```

@@ -1,0 +1,145 @@
+---
+title: "Demographic Data"
+author: "Christopher Prener, Ph.D."
+date: '(`r format(Sys.time(), "%B %d, %Y")`)'
+output: 
+  github_document: default
+  html_notebook: default 
+---
+
+## Introduction
+This notebook contains the code for creating neighborhood population estimates.
+
+## Dependencies
+This notebook requires:
+
+```{r load-packages}
+# tidyverse packages
+library(dplyr)         # data wrangling
+library(readr)         # working with csv data
+
+# spatial packages
+library(areal)         # interpolation
+library(sf)            # working with spatial data
+library(tidycensus)    # census api access
+library(tigris)        # tiger/line api access
+
+# other packages
+library(here)          # file path management
+```
+
+## Download Data
+Census data will be used and is accessed via the Census Bureau's API. The `tidycensus` and `tigris` packages are used for this.
+
+First, we'll download a shapefile of the city's census geography:
+
+```{r get-tracts}
+tracts(state = 29, count = 510, class = "sf") %>%
+  select(GEOID) -> tracts
+```
+
+Next, we'll download the 2017 five year population estimates, and merge them with the census geography data we've already cleaned above:
+
+```{r get-pops}
+# 2017
+get_acs(year = 2017, geography = "tract", variable = "B01003_001", 
+        state = 29, county = 510) %>%
+  left_join(tracts, ., by = "GEOID") %>%
+  st_transform(crs = 102696) -> tracts17
+```
+
+## Load Neighborhood Data
+To estimate populations for neighborhoods, we'll use the city's neighborhood boundary data:
+
+```{r load-neighborhoods}
+st_read(here("data", "raw", "nhood", "STL_BOUNDARY_Nhoods.shp"), stringsAsFactors = FALSE) %>%
+  st_transform(crs = 102696) %>%
+  select(NHD_NUM, NHD_NAME) -> nhoods
+```
+
+## Estimate Neighborhood Populations
+We'll use a technique called areal weighted interpolation to estimate populations for each neighborhood.
+
+```{r interpolate}
+aw_interpolate(nhoods, tid = NHD_NUM, source = tracts17, sid = GEOID, 
+               weight = "sum", output = "tibble", extensive = "estimate") %>%
+  left_join(nhoods, ., by = "NHD_NUM") %>%
+  rename(pop17 = estimate) -> nhoods
+```
+
+## Clean-up Enviornment
+We can get rid of the `tracts` and `tracts17` objects at this stage.
+
+```{r rm-tracts}
+rm(tracts, tracts17)
+```
+
+## Add Part 1 Crime Counts by Neighborhood
+Next, we want to add counts of crimes for each neighborhood. To do this, we need to load the crime data we cleaned previously:
+
+```{r load-crimes}
+p1_crimes <- read_csv(here("data", "clean", "p1_crimes.csv"))
+```
+
+Then, we need to project the data, place them in the appropriate coordinate system, and perform a spatial join to identify the neighborhood each crime occurs in:
+
+```{r crimes-by-neighborhood}
+# obtain counts by neighborhood
+p1_crimes %>%
+  st_as_sf(coords = c("XCoord", "YCoord"), crs = 102696) %>%
+  st_intersection(., nhoods) %>%
+  group_by(NHD_NUM) %>%
+  summarise(p1Crimes = n()) -> nhoodCrimes
+
+# remove geometry
+st_geometry(nhoodCrimes) <- NULL
+
+# join with original neighborhood data
+nhoods <- left_join(nhoods, nhoodCrimes, by = "NHD_NUM")
+```
+
+Since crime rates are the most important metric, we'll add a measure of crimes per 1,000 residents in each neighborhood:
+
+```{r add-crime-rates}
+nhoods <- mutate(nhoods, p1Rate = (p1Crimes/pop17)*1000)
+```
+
+## Add Violent Crime Counts by Neighborhood
+Next, we want to add counts of violent crimes for each neighborhood. To do this, we need to load the crime data we cleaned previously:
+
+```{r load-violent-crimes}
+v_crimes <- read_csv(here("data", "clean", "v_crimes.csv"))
+```
+
+Then, we need to project the data, place them in the appropriate coordinate system, and perform a spatial join to identify the neighborhood each crime occurs in:
+
+```{r violent-crimes-by-neighborhood}
+# obtain counts by neighborhood
+v_crimes %>%
+  st_as_sf(coords = c("XCoord", "YCoord"), crs = 102696) %>%
+  st_intersection(., nhoods) %>%
+  group_by(NHD_NUM) %>%
+  summarise(vCrimes = n()) -> nhoodVCrimes
+
+# remove geometry
+st_geometry(nhoodVCrimes) <- NULL
+
+# join with original neighborhood data
+left_join(nhoods, nhoodVCrimes, by = "NHD_NUM") %>%
+  mutate(vCrimes = ifelse(is.na(vCrimes) == TRUE, 0, vCrimes)) -> nhoods
+```
+
+Since crime rates are the most important metric, we'll add a measure of crimes per 1,000 residents in each neighborhood:
+
+```{r add-violent-crime-rates}
+nhoods <- mutate(nhoods, vRate = (vCrimes/pop17)*1000)
+```
+
+## Write Data
+Finally, we'll write our neighborhood data to a shapefile for mapping:
+
+```{r write-data}
+st_write(nhoods, 
+         here("data", "clean", "STL_CRIME_Neighborhoods", "STL_CRIME_Neighborhoods.shp"),
+         delete_dsn = TRUE)
+```

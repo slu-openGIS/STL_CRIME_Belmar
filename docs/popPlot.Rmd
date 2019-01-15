@@ -1,0 +1,77 @@
+--
+title: "Population Plot"
+author: "Christopher Prener, Ph.D."
+date: '(`r format(Sys.time(), "%B %d, %Y")`)'
+output: 
+  github_document: default
+  html_notebook: default 
+---
+
+## Introduction
+This notebook contains the code for creating a plot showing the relationship between neighborhood population and number of crimes.
+
+## Dependencies
+This notebook requires:
+
+```{r load-packages}
+# tidyverse packages
+library(ggplot2)       # data plotting
+
+# spatial packages
+library(sf)            # working with spatial data
+
+# other packages
+library(here)          # file path management
+```
+
+## Load Data
+We'll load the neighborhood boundaries for plotting:
+
+```{r}
+st_read(here("data", "clean", "STL_CRIME_Neighborhoods", "STL_CRIME_Neighborhoods.shp")) %>%
+  st_transform(crs = 102696) -> nhoods
+```
+
+## Create Part 1 Crime Plot
+First, we'll create our scatterplot object for part 1 crimes.
+
+```{r part1-plot}
+ggplot(data = nhoods, mapping = aes(x = pop17, y = p1Crimes)) +
+  geom_point(position = "jitter") +
+  geom_smooth(method = "lm") +
+  labs(
+    title = "Population and Part 1 Crime in St. Louis",
+    subtitle = "By Neighborhood, 2016-2017",
+    x = "Population Count, 2017",
+    y = "Count of Part 1 Crimes",
+    caption = "Plot by Christopher Prener, Ph.D."
+  )
+```
+
+We'll write the plot to the `results/` folder for publication:
+
+```{r write-plot}
+ggsave(filename = here("results", "pop_plot_p1.png"), dpi = 500)
+```
+
+## Create Violent Crime Plot
+Next, we'll create our scatterplot object for violent.
+
+```{r violent-plot}
+ggplot(data = nhoods, mapping = aes(x = pop17, y = vCrimes)) +
+  geom_point(position = "jitter") +
+  geom_smooth(method = "lm") +
+  labs(
+    title = "Population and Violent Crime in St. Louis",
+    subtitle = "By Neighborhood, 2016-2017",
+    x = "Population Count, 2017",
+    y = "Count of Violent Crimes",
+    caption = "Plot by Christopher Prener, Ph.D."
+  )
+```
+
+We'll also write the plot to the `results/` folder for publication:
+
+```{r write-violent-plot}
+ggsave(filename = here("results", "pop_plot_v.png"), dpi = 500)
+```
